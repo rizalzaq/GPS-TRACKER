@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPS Tracker Kereta Api</title>
+
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+
+    <!-- Custom CSS for Futuristic Style -->
+
+
+    <style>
+        body {
+            background-color: #1c1e29;
+            color: #ffffff;
+            font-family: 'Roboto', sans-serif;
+        }
+        .navbar-custom {
+            background-color: #2a2e3b;
+            border-bottom: 2px solid #00d4ff;
+        }
+        .navbar-brand {
+            color: #00d4ff;
+        }
+        .navbar-nav .nav-link {
+            color: #ffffff;
+        }
+        .navbar-nav .nav-link:hover {
+            color: #00d4ff;
+        }
+        .content {
+            padding: 20px;
+        }
+        h3 {
+            color: #00d4ff;
+            text-align: center;
+        }
+        .map-info-wrapper {
+            display: grid;
+            grid-template-columns: 4fr 1fr;
+            gap: 15px;
+            align-items: start;
+        }
+        #map {
+            height: 60vh;
+            width: 100%;
+            border: 2px solid #00d4ff;
+            border-radius: 10px;
+        }
+        #info {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            align-self: start;
+            margin-top: 20px;
+        }
+        .card-custom {
+            background-color: #2a2e3b;
+            border: 1px solid #00d4ff;
+            color: #00d4ff;
+            border-radius: 10px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 10px;
+        }
+        .card-title {
+            font-size: 1rem;
+            margin-top: 5px;
+        }
+        .card-text {
+            font-size: 1.4rem;
+            margin: 0;
+        }
+        .card-body {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+        .station-table {
+            width: 100%;
+            margin: 20px auto;
+            color: #ffffff;
+            table-layout: fixed;
+        }
+        .station-table th, .station-table td {
+            border: 1px solid #00d4ff;
+            padding: 5px;
+            text-align: center;
+            word-wrap: break-word;
+        }
+        .station-table th {
+            background-color: #1c1e29;
+        }
+        .modal-body {
+            padding: 20px; /* Tambahkan padding untuk memberi ruang pada teks */
+        }
+        .modal-body p,h5 {
+            color: #000; /* Pastikan warna teks hitam agar terlihat jelas pada background putih */
+        }
+
+    </style>
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg navbar-custom">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="home.html"><i class="fas fa-train"></i> PPIM Tracker</a>
+        <span id="username" class="ms-3" style="font-weight: bold; color: #ffffff;"></span>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon" style="color: white;"><i class="fas fa-bars"></i></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ms-auto">
+                <li class="nav-item">
+                    <a class="nav-link" href="home.html"><i class="fas fa-home"></i> Home</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="tambah-stasiun.html"><i class="fas fa-map-marker-alt"></i> Tambah Stasiun</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<!-- Main Content -->
+<div class="content">
+    <h3>GPS Tracker Kereta Api</h3>
+    <div class="map-info-wrapper">
+        <!-- Map Container -->
+        <div id="map" class="my-4"></div>
+
+        <!-- Info Section (Right next to map) -->
+        <div id="info">
+            <div class="card card-custom p-2">
+                <h6 class="card-title text-center">Speed (km/h)</h6>
+                <div class="card-body text-center">
+                    <p class="card-text" id="speed">Loading...</p>
+                </div>
+            </div>
+            <div class="card card-custom p-2">
+                <h6 class="card-title text-center">Time (WITA)</h6>
+                <div class="card-body text-center">
+                    <p class="card-text" id="time">Loading...</p>
+                </div>
+            </div>
+                <!-- Button "Mulai" untuk mengupdate database -->
+                <button id="startButton" class="btn btn-primary mt-2">Mulai</button>
+
+                <!-- Button "Reset" -->
+                <button id="resetButton" class="btn btn-danger mt-2">Reset</button> <!-- Tombol reset -->
+
+                <!-- Button "Selesai" -->
+                <button id="finishButton" class="btn btn-success mt-2">Selesai</button> <!-- Tombol selesai -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tabel Daftar Stasiun -->
+<div class="container">
+    <table class="station-table table table-bordered table-hover table-dark text-center">
+        <thead>
+            <tr>
+                <th>Stasiun</th>
+                <th>Kedatangan</th>
+                <th>Keberangkatan</th>
+            </tr>
+        </thead>
+        <tbody id="stationData">
+            <!-- Data stasiun akan ditambahkan di sini oleh JavaScript -->
+        </tbody>
+    </table>
+
+    <!-- Logger untuk mencatat kecepatan yang melebihi batas -->
+    <div class="alert-logger mt-4">
+        <h4 style="color:#00d4ff; text-align:center;">Log Alert Kecepatan</h4>
+        <ul id="alertLog" class="list-group">
+            <!-- Data log akan ditambahkan di sini oleh JavaScript -->
+        </ul>
+    </div>
+</div>
+
+<!-- Audio untuk buzzer -->
+<audio id="buzzerSound" src="assets/audio/buzzer.mp3" preload="auto"></audio>
+
+<!-- Modal Konfirmasi -->
+<div class="modal fade" id="confirmationModal" tabindex="-1" aria-labelledby="confirmationModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="confirmationModalLabel">Konfirmasi</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p id="confirmationMessage">Apakah Anda yakin ingin melanjutkan tindakan ini?</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+          <button type="button" id="confirmAction" class="btn btn-danger">Lanjutkan</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<!-- Firebase JS -->
+<script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-database.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-auth.js"></script>
+
+<!-- Bootstrap 5 JS Bundle -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+
+<script>
+  // Konfigurasi Firebase
+  const firebaseConfig = {
+    apiKey: "AIzaSyDOnIWvVoPShIsL_vIAmU_zriLjiPxGA0s",
+    authDomain: "gpsdata-2975c.firebaseapp.com",
+    databaseURL: "https://gpsdata-2975c-default-rtdb.firebaseio.com",
+    projectId: "gpsdata-2975c",
+    storageBucket: "gpsdata-2975c.firebasestorage.app",
+    messagingSenderId: "16740674252",
+    appId: "1:16740674252:web:3af606b0cd18544e4fb069",
+    measurementId: "G-T1EVLE8VF8"
+  };
+
+  // Inisialisasi Firebase
+  firebase.initializeApp(firebaseConfig);
+  const database = firebase.database();
+
+  // Fungsi Logout
+  function logout() {
+      firebase.auth().signOut().then(() => {
+          // Redirect ke halaman login
+          window.location.href = 'login.html';
+      }).catch((error) => {
+          alert('Error saat logout: ' + error.message);
+      });s
+  }
+
+  // Inisialisasi peta menggunakan Leaflet.js dan OpenStreetMap
+  const map = L.map('map').setView([-5.053118, 119.525251], 15);  // Lokasi default Jakarta
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+  }).addTo(map);
+  
+  // Mengubah marker menjadi icon kereta api
+  const trainIcon = L.icon({
+      iconUrl: 'assets/images/train.png', // Ganti dengan ikon kereta yang lebih bagus
+      iconSize: [40 , 40], // ukuran icon
+      iconAnchor: [20, 40], // titik anchor
+      popupAnchor: [0, -40] // posisi popup
+  });
+
+  let marker = L.marker([-6.200000, 106.816666], { icon: trainIcon }).addTo(map);  // Marker default di Jakarta
+
+  // Array untuk menyimpan koordinat lintasan
+  let trackPath = [];
+
+  // Layer untuk menampilkan lintasan
+  let polyline = L.polyline(trackPath, { color: 'red' }).addTo(map);
+
+  // Objek untuk menyimpan status geofence per stasiun
+  let stationStatus = {};
+
+  // Fungsi untuk mengambil data stasiun dan menampilkannya di tabel
+  function loadStationData() {
+      database.ref('stations').once('value', (snapshot) => {
+          const stationData = snapshot.val();
+          const stationTableBody = document.getElementById('stationData');
+          stationTableBody.innerHTML = ''; // Kosongkan tabel sebelum menambahkan data baru
+
+          for (let key in stationData) {
+              const station = stationData[key];
+              const row = document.createElement('tr');
+              row.innerHTML = `
+                  <td>${station.name}</td>
+                  <td>${station.arrival || 'N/A'}</td>
+                  <td>${station.departure || 'N/A'}</td>
+              `;
+              stationTableBody.appendChild(row);
+
+              // Tambahkan geofencing ke peta
+              const latlngs = station.coordinates.map(coord => [coord.lat, coord.lng]);
+              const polygon = L.polygon(latlngs, { color: 'blue' }).addTo(map);
+              polygon.bindPopup(`<b>Stasiun: </b>${station.name}`);
+
+              // Simpan status awal geofence untuk setiap stasiun
+              stationStatus[key] = {
+                  inside: false,
+                  polygon: polygon,
+                  name: station.name,
+                  hasArrived: false,  // Status untuk memastikan kedatangan hanya sekali
+                  hasDeparted: false  // Status untuk memastikan keberangkatan hanya sekali
+              };
+          }
+      });
+  }
+
+  let trackingStarted = false; // Variabel kontrol untuk memulai dan menghentikan tracking
+
+// Fungsi untuk mengambil data lokasi terbaru dari Firebase dan memperbarui marker di peta
+function updateLocation() {
+    if (!trackingStarted) return; // Jika tracking belum dimulai, hentikan fungsi
+
+    database.ref('location').on('value', (snapshot) => {
+        const locationData = snapshot.val();
+        if (locationData) {
+            const lat = locationData.latitude;
+            const lng = locationData.longitude;
+            const speed = locationData.speed || 'Unknown';
+            const currentTime = locationData.time || 'Loading...';
+
+            // Update posisi marker
+            marker.setLatLng([lat, lng]);
+            map.setView([lat, lng], map.getZoom(), {animate: true});
+
+            // Tambahkan titik koordinat baru ke array trackPath
+            trackPath.push([lat, lng]);
+
+            // Update polyline di peta
+            polyline.setLatLngs(trackPath);
+
+            // Update informasi kecepatan dan waktu
+            document.getElementById('speed').textContent = speed;
+            document.getElementById('time').textContent = currentTime;
+
+            // Mengambil elemen audio buzzer
+            const buzzer = document.getElementById('buzzerSound');
+
+            // Periksa kecepatan dan tampilkan alert serta mainkan buzzer jika melebihi 80 km/h
+            if (speed !== 'Unknown') {
+                if (speed > 80) {
+                    document.getElementById('speed').style.color = 'red';
+                    document.getElementById('speed').textContent += ' - Awas!';
+
+                    // Mainkan suara buzzer
+                    buzzer.play();
+
+                    // Tambahkan log ke dalam data logger
+                    logSpeedAlert(speed, currentTime);
+                } else {
+                    document.getElementById('speed').style.color = 'green';
+                    document.getElementById('speed').textContent += ' - Aman';
+                }
+            }
+
+            // Cek apakah kereta memasuki atau meninggalkan stasiun
+            checkGeofence([lat, lng]);
+        }
+    });
+}
+
+// Event listener untuk tombol "Mulai"
+document.getElementById('startButton').addEventListener('click', function() {
+    trackingStarted = true; // Aktifkan tracking
+    updateLocation();  // Mulai mengupdate database dengan data GPS
+});
+
+// Event listener untuk tombol "Reset"
+document.getElementById('resetButton').addEventListener('click', function() {
+    resetStationTimes(); // Panggil fungsi reset data stasiun
+});
+
+
+
+// Fungsi untuk menambahkan log ke dalam data logger
+function logSpeedAlert(speed, time) {
+    const logList = document.getElementById('alertLog');
+
+    // Buat elemen log baru
+    const logItem = document.createElement('li');
+    logItem.className = 'list-group-item list-group-item-danger';
+    logItem.textContent = `Peringatan: Kecepatan ${speed} km/h pada ${time}`;
+
+    // Tambahkan log ke dalam list
+    logList.appendChild(logItem);
+}
+
+ // Fungsi untuk mengecek apakah kereta berada di dalam atau keluar area stasiun
+function checkGeofence(currentLocation) {
+    for (let key in stationStatus) {
+        const station = stationStatus[key];
+        const isInside = station.polygon.getBounds().contains(currentLocation);
+
+        if (isInside && !station.inside) {
+            // Jika marker baru memasuki area geofence
+            handleArrival(key);
+            station.inside = true;  // Update status lokal
+        } else if (!isInside && station.inside) {
+            // Jika marker baru meninggalkan area geofence
+            handleDeparture(key);
+            station.inside = false;  // Update status lokal
+        }
+    }
+}
+
+  // Fungsi untuk menangani kedatangan di stasiun
+  function handleArrival(stationKey) {
+      database.ref(`stations/${stationKey}`).once('value').then((snapshot) => {
+          const stationData = snapshot.val();
+          if (!stationData.hasArrived) {
+              // Ambil nilai waktu dari lokasi di Firebase
+              database.ref('location').once('value').then((locationSnapshot) => {
+                  const locationData = locationSnapshot.val();
+                  const currentTime = locationData.time || 'Loading...';
+                  
+                  console.log(`Kereta tiba di stasiun ${stationData.name} pada ${currentTime}`);
+  
+                  database.ref(`stations/${stationKey}`).update({
+                      arrival: currentTime,
+                      hasArrived: true,
+                      hasDeparted: false
+                  }).then(() => {
+                      console.log(`Waktu kedatangan di stasiun ${stationData.name} telah disimpan.`);
+                      loadStationData(); // Update tabel setelah kedatangan
+                      stationStatus[stationKey].hasArrived = true; // Update status di JavaScript
+                  }).catch((error) => {
+                      console.error(`Gagal menyimpan waktu kedatangan: ${error}`);
+                  });
+              });
+          } else {
+              console.log(`Kereta sudah tiba di stasiun ${stationData.name}, tidak perlu memperbarui.`);
+          }
+      }).catch((error) => {
+          console.error(`Gagal membaca status stasiun: ${error}`);
+      });
+  }
+
+  // Fungsi untuk menangani keberangkatan dari stasiun
+function handleDeparture(stationKey) {
+    database.ref(`stations/${stationKey}`).once('value').then((snapshot) => {
+        const stationData = snapshot.val();
+        
+        // Pastikan bahwa status kedatangan telah diatur sebelumnya atau berada di dalam area
+        if (stationData.hasArrived && !stationData.hasDeparted) {
+            // Ambil nilai waktu dari lokasi di Firebase
+            database.ref('location').once('value').then((locationSnapshot) => {
+                const locationData = locationSnapshot.val();
+                const currentTime = locationData.time || 'Loading...';
+
+                console.log(`Kereta berangkat dari stasiun ${stationData.name} pada ${currentTime}`);
+
+                // Update waktu keberangkatan dan status hasDeparted di Firebase
+                database.ref(`stations/${stationKey}`).update({
+                    departure: currentTime,
+                    hasDeparted: true,
+                    hasArrived: false
+                }).then(() => {
+                    console.log(`Waktu keberangkatan di stasiun ${stationData.name} telah disimpan.`);
+                    loadStationData(); // Update tabel setelah keberangkatan
+                    stationStatus[stationKey].hasDeparted = true; // Update status di JavaScript
+                }).catch((error) => {
+                    console.error(`Gagal memperbarui waktu keberangkatan: ${error}`);
+                });
+            });
+        } else if (!stationData.hasArrived && !stationData.hasDeparted) {
+            // Tangani situasi di mana marker keluar dari stasiun tanpa mencatat kedatangan
+            database.ref(`stations/${stationKey}`).update({
+                departure: 'Unknown',  // Tetapkan keberangkatan tanpa waktu
+                hasDeparted: true,
+                hasArrived: false
+            }).then(() => {
+                console.log(`Waktu keberangkatan tanpa kedatangan di stasiun ${stationData.name} telah disimpan.`);
+                loadStationData();
+                stationStatus[stationKey].hasDeparted = true;
+            }).catch((error) => {
+                console.error(`Gagal memperbarui keberangkatan tanpa kedatangan: ${error}`);
+            });
+        } else {
+            console.log(`Kereta sudah berangkat dari stasiun ${stationData.name}, tidak perlu memperbarui.`);
+        }
+    }).catch((error) => {
+        console.error(`Gagal membaca status stasiun: ${error}`);
+    });
+}
+
+  // Memuat data stasiun saat halaman pertama kali dimuat
+  window.onload = function() {
+      firebase.auth().onAuthStateChanged(function(user) {
+          if (user) {
+              document.getElementById('username').textContent = user.displayName || 'User';
+              document.getElementById('usernameNav').textContent = user.displayName || 'User';
+          }
+      });
+      loadStationData();
+      updateLocation();
+  };
+
+  // Memeriksa apakah pengguna sudah login atau belum
+firebase.auth().onAuthStateChanged(function(user) {
+    if (user) {
+        // Pengguna sudah login, bisa mengakses halaman
+        document.getElementById('username').textContent = user.displayName || 'User';
+    } else {
+        // Pengguna belum login, redirect ke halaman login
+        window.location.href = 'login.html'; // Redirect ke halaman login
+    }
+});
+
+let actionToConfirm = null;
+
+    // Fungsi untuk membuka modal konfirmasi
+    function showConfirmationModal(message, action) {
+    document.getElementById('confirmationMessage').textContent = message;
+    actionToConfirm = action;
+        // Inisialisasi modal dengan cara yang benar
+    const modal = new bootstrap.Modal(document.getElementById('confirmationModal'), {
+        backdrop: 'static', // Modal tidak bisa ditutup dengan klik luar
+        keyboard: false     // Modal tidak bisa ditutup dengan tombol ESC
+    });
+    
+    modal.show();
+    }
+
+  // Fungsi Logout dengan Modal
+  function logout() {
+    showConfirmationModal("Apakah Anda yakin ingin logout?", function() {
+      firebase.auth().signOut().then(() => {
+        window.location.href = 'login.html';
+      }).catch((error) => {
+        alert('Error saat logout: ' + error.message);
+      });
+    });
+  }
+
+  // Fungsi untuk mereset waktu kedatangan dan keberangkatan dengan Modal
+function resetStationTimes() {
+  showConfirmationModal("Apakah Anda yakin ingin mereset semua data kedatangan dan keberangkatan?", function() {
+    const stationsRef = database.ref('stations');
+    stationsRef.once('value', (snapshot) => {
+      snapshot.forEach((stationSnapshot) => {
+        const stationKey = stationSnapshot.key;
+        stationsRef.child(stationKey).update({
+          arrival: null,
+          departure: null,
+          hasArrived: false,
+          hasDeparted: false
+        }).then(() => {
+          console.log(`Data untuk stasiun ${stationKey} telah direset.`);
+        }).catch((error) => {
+          console.error(`Gagal mereset data untuk stasiun ${stationKey}: ${error}`);
+        });
+      });
+
+      // Setelah reset berhasil, perbarui tabel
+      loadStationData();
+
+      // Tampilkan pesan berhasil
+      alert('Data kedatangan dan keberangkatan semua stasiun telah direset.');
+    });
+  });
+}
+
+    // Event listener untuk tombol "Lanjutkan" pada modal
+    document.getElementById('confirmAction').addEventListener('click', function() {
+    if (actionToConfirm) {
+        actionToConfirm(); // Jalankan aksi yang ditentukan (Logout atau Reset)
+        
+        // Tutup modal setelah aksi selesai
+        const modalElement = document.getElementById('confirmationModal');
+        const modalInstance = bootstrap.Modal.getInstance(modalElement);
+        modalInstance.hide(); // Tutup modal dengan cara yang benar
+    }
+    });
+
+    // Event listener untuk tombol "Selesai"
+document.getElementById('finishButton').addEventListener('click', function() {
+    window.location.href = 'selesai.html'; // Mengarahkan ke halaman selesai.html
+});
+
+
+    
+
+
+</script>
+
+</body>
+</html>

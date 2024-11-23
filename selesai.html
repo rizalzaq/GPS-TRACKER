@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hasil Grafik Kedatangan dan Keberangkatan Realtime</title>
+
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+
+    <!-- html2canvas dan jsPDF untuk PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.3.2/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
+
+    <style>
+        /* Mengatur warna tampilan utama menjadi hitam putih */
+        body, .container {
+            background-color: #ffffff;
+            color: #000000;
+            font-family: 'Roboto', sans-serif;
+        }
+
+        .navbar-custom {
+            background-color: #2a2e3b;
+            border-bottom: 2px solid #00d4ff;
+        }
+        .navbar-brand {
+            color: #00d4ff;
+        }
+        .navbar-nav .nav-link {
+            color: #ffffff;
+        }
+        .navbar-nav .nav-link:hover {
+            color: #00d4ff;
+        }
+
+        h3 {
+            color: #000000;
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .station-table {
+            width: 100%;
+            margin-top: 20px;
+            color: #000000;
+            table-layout: fixed;
+        }
+
+        .station-table th, .station-table td {
+            border: 1px solid #000000;
+            padding: 5px;
+            text-align: center;
+            word-wrap: break-word;
+            background-color: #f5f5f5; /* Warna latar belakang untuk tampilan yang lebih jelas */
+        }
+
+        /* Mengatur warna chart menjadi monokrom */
+        .chartjs-render-monitor {
+            background-color: #ffffff;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg navbar-custom">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="home.html"><i class="fas fa-train"></i> PPIM Tracker</a>
+        <span id="username" class="ms-3" style="font-weight: bold; color: #000000;"></span>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon" style="color: black;"><i class="fas fa-bars"></i></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ms-auto">
+                <li class="nav-item">
+                    <a class="nav-link" href="home.html"><i class="fas fa-home"></i> Home</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="tambah-stasiun.html"><i class="fas fa-map-marker-alt"></i> Tambah Stasiun</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<!-- Main Content -->
+<div class="container" id="contentToPrint">
+    <h3>Hasil Kedatangan & Keberangkatan</h3>
+
+    <!-- Tombol Print PDF -->
+    <button onclick="printToPDF()" class="btn btn-dark mb-3"><i class="fas fa-file-pdf"></i> Cetak PDF</button>
+
+    <!-- Tabel Daftar Stasiun -->
+    <table class="station-table table table-bordered table-hover text-center">
+        <thead>
+            <tr>
+                <th>Stasiun</th>
+                <th>Kedatangan</th>
+                <th>Keberangkatan</th>
+            </tr>
+        </thead>
+        <tbody id="stationData">
+            <!-- Data kedatangan dan keberangkatan akan ditambahkan di sini oleh JavaScript -->
+        </tbody>
+    </table>
+
+    <!-- Grafik Kedatangan dan Keberangkatan -->
+    <h3 class="mt-5">Grafik Kedatangan dan Keberangkatan</h3>
+    <canvas id="arrivalDepartureChart" width="400" height="200"></canvas>
+</div>
+
+<!-- Firebase JS -->
+<script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-database.js"></script>
+
+<script>
+  // Firebase configuration
+  const firebaseConfig = {
+    apiKey: "AIzaSyDOnIWvVoPShIsL_vIAmU_zriLjiPxGA0s",
+    authDomain: "gpsdata-2975c.firebaseapp.com",
+    databaseURL: "https://gpsdata-2975c-default-rtdb.firebaseio.com",
+    projectId: "gpsdata-2975c",
+    storageBucket: "gpsdata-2975c.firebasestorage.app",
+    messagingSenderId: "16740674252",
+    appId: "1:16740674252:web:3af606b0cd18544e4fb069",
+    measurementId: "G-T1EVLE8VF8"
+  };
+
+  // Initialize Firebase
+  firebase.initializeApp(firebaseConfig);
+  const database = firebase.database();
+
+  // Load station data and update the table
+  function loadStationData() {
+      database.ref('stations').once('value', (snapshot) => {
+          const stationData = snapshot.val();
+          const stationTableBody = document.getElementById('stationData');
+          stationTableBody.innerHTML = ''; // Empty table before adding new data
+
+          const labels = [];
+          const arrivalTimes = [];
+          const departureTimes = [];
+
+          for (let key in stationData) {
+              const station = stationData[key];
+              const row = document.createElement('tr');
+              row.innerHTML = `
+                  <td>${station.name}</td>
+                  <td>${station.arrival || 'N/A'}</td>
+                  <td>${station.departure || 'N/A'}</td>
+              `;
+              stationTableBody.appendChild(row);
+
+              labels.push(station.name);
+              arrivalTimes.push(station.arrival ? new Date(`1970-01-01T${station.arrival}Z`).getTime() / 60000 : null);
+              departureTimes.push(station.departure ? new Date(`1970-01-01T${station.departure}Z`).getTime() / 60000 : null);
+          }
+
+          renderChart(labels, arrivalTimes, departureTimes);
+      });
+  }
+
+  // Render chart with colorful color scheme
+function renderChart(labels, arrivalTimes, departureTimes) {
+    const ctx = document.getElementById('arrivalDepartureChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Kedatangan (menit)',
+                    data: arrivalTimes,
+                    borderColor: 'rgba(54, 162, 235, 0.8)', // Warna biru
+                    backgroundColor: 'rgba(54, 162, 235, 0.3)',
+                    pointBackgroundColor: 'rgba(54, 162, 235, 1)',
+                    fill: false,
+                    tension: 0.4
+                },
+                {
+                    label: 'Keberangkatan (menit)',
+                    data: departureTimes,
+                    borderColor: 'rgba(255, 99, 132, 0.8)', // Warna merah
+                    backgroundColor: 'rgba(255, 99, 132, 0.3)',
+                    pointBackgroundColor: 'rgba(255, 99, 132, 1)',
+                    fill: false,
+                    tension: 0.4
+                }
+            ]
+        },
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Waktu (menit sejak tengah malam)',
+                        color: '#000000'
+                    },
+                    ticks: {
+                        color: '#000000'
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Stasiun',
+                        color: '#000000'
+                    },
+                    ticks: {
+                        color: '#000000'
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    labels: {
+                        color: '#000000'
+                    }
+                }
+            }
+        }
+    });
+}
+
+
+  // Print to PDF function
+  function printToPDF() {
+      const { jsPDF } = window.jspdf;
+      const content = document.getElementById("contentToPrint");
+
+      html2canvas(content).then(canvas => {
+          const imgData = canvas.toDataURL('image/png');
+          const pdf = new jsPDF("p", "mm", "a4");
+          const imgWidth = 190;
+          const imgHeight = (canvas.height * imgWidth) / canvas.width;
+          
+          pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, imgHeight);
+          pdf.save("Laporan_Kedatangan_Keberangkatan.pdf");
+      });
+  }
+
+  // Load data on page load
+  window.onload = function() {
+      loadStationData();
+  };
+
+  // Logout function with confirmation
+  function logout() {
+      if (confirm("Apakah Anda yakin ingin logout?")) {
+          firebase.auth().signOut().then(() => {
+              alert("Logout berhasil. Anda akan dialihkan ke halaman login.");
+              window.location.href = 'login.html';
+          }).catch((error) => {
+              console.error("Error saat logout:", error);
+              alert("Terjadi kesalahan saat logout: " + error.message);
+          });
+      }
+  }
+</script>
+
+</body>
+</html>

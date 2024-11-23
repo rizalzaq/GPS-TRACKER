@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tambah Stasiun - GPS Tracker Kereta Api</title>
+
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+
+    <!-- Custom CSS for Futuristic Style -->
+    <style>
+        body {
+            background-color: #1c1e29;
+            color: #ffffff;
+            font-family: 'Roboto', sans-serif;
+        }
+        .navbar-custom {
+            background-color: #2a2e3b;
+            border-bottom: 2px solid #00d4ff;
+        }
+        .navbar-brand {
+            color: #00d4ff;
+            font-size: 1.5rem;
+        }
+        .navbar-brand i {
+            margin-right: 8px;
+        }
+        .navbar-nav .nav-link {
+            color: #ffffff;
+            font-size: 1rem;
+        }
+        .navbar-nav .nav-link:hover {
+            color: #00d4ff;
+        }
+        .content {
+            padding: 20px;
+        }
+        h3 {
+            color: #00d4ff;
+            text-align: center;
+        }
+        #map {
+            height: 500px;
+            width: 100%;
+            border: 2px solid #00d4ff;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        .form-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .form-control-custom {
+            border: 2px solid #00d4ff;
+            border-radius: 10px;
+            background-color: #2a2e3b;
+            color: #ffffff;
+            padding: 10px;
+            width: 80%;
+            transition: all 0.3s ease;
+        }
+        .form-control-custom:focus {
+            outline: none;
+            background-color: #1c1e29;
+            box-shadow: 0 0 10px #00d4ff;
+        }
+        .btn-custom {
+            background-color: #00d4ff;
+            color: #ffffff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: background-color 0.3s ease, transform 0.3s ease;
+        }
+        .btn-custom:hover {
+            background-color: #00b8e6;
+            transform: scale(1.05);
+        }
+        .station-table {
+            width: 100%;
+            margin-top: 20px;
+            color: #ffffff;
+        }
+        .station-table th, .station-table td {
+            border: 1px solid #00d4ff;
+            padding: 10px;
+            text-align: left;
+        }
+        .station-table th {
+            background-color: #1c1e29;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg navbar-custom">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="home.html"><i class="fas fa-train"></i> PPIM Tracker</a>
+        <span id="username" class="ms-3" style="font-weight: bold; color: #ffffff;"></span>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon" style="color: white;"><i class="fas fa-bars"></i></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ms-auto">
+                <li class="nav-item">
+                    <a class="nav-link" href="home.html"><i class="fas fa-home"></i> Home</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="tambah-stasiun.html"><i class="fas fa-map-marker-alt"></i> Tambah Stasiun</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#logoutModal"><i class="fas fa-sign-out-alt"></i> Logout</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<!-- Main Content -->
+<div class="content">
+    <div class="container">
+        <h3>Tambah Stasiun - GPS Tracker Kereta Api</h3>
+
+        <!-- Map Container -->
+        <div id="map"></div>
+
+        <!-- Form Tambah Stasiun -->
+        <div class="form-container">
+            <input type="text" class="form-control-custom" id="stationName" placeholder="Masukkan Nama Stasiun" required>
+            <button type="submit" class="btn btn-custom mt-3" data-bs-toggle="modal" data-bs-target="#saveStationModal">Simpan Stasiun</button>
+        </div>
+
+        <!-- Tabel Daftar Stasiun -->
+        <table class="station-table table table-bordered table-hover table-dark text-center">
+            <thead>
+                <tr>
+                    <th>No</th>
+                    <th>Nama Stasiun</th>
+                    <th>Aksi</th>
+                </tr>
+            </thead>
+            <tbody id="stationData">
+                <!-- Data stasiun akan ditambahkan di sini oleh JavaScript -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal Konfirmasi Logout -->
+<div class="modal fade" id="logoutModal" tabindex="-1" aria-labelledby="logoutModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content text-dark">
+            <div class="modal-header">
+                <h5 class="modal-title" id="logoutModalLabel">Konfirmasi Logout</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Apakah Anda yakin ingin logout?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                <button type="button" class="btn btn-danger" id="logoutConfirmBtn" onclick="logout()">Logout</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Konfirmasi Hapus Stasiun -->
+<div class="modal fade" id="deleteStationModal" tabindex="-1" aria-labelledby="deleteStationModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content text-dark">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteStationModalLabel">Konfirmasi Hapus Stasiun</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Apakah Anda yakin ingin menghapus stasiun ini?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                <button type="button" class="btn btn-danger" id="deleteStationConfirmBtn">Hapus</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Konfirmasi Simpan Stasiun -->
+<div class="modal fade" id="saveStationModal" tabindex="-1" aria-labelledby="saveStationModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content text-dark">
+            <div class="modal-header">
+                <h5 class="modal-title" id="saveStationModalLabel">Konfirmasi Simpan Stasiun</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Apakah Anda yakin ingin menyimpan stasiun ini?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                <button type="button" class="btn btn-success" id="saveStationConfirmBtn" onclick="saveStation()">Simpan</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+
+<!-- Firebase JS -->
+<script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-database.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-auth.js"></script>
+
+<!-- Bootstrap 5 JS Bundle -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+
+<script>
+  // Konfigurasi Firebase
+  const firebaseConfig = {
+    apiKey: "AIzaSyDOnIWvVoPShIsL_vIAmU_zriLjiPxGA0s",
+    authDomain: "gpsdata-2975c.firebaseapp.com",
+    databaseURL: "https://gpsdata-2975c-default-rtdb.firebaseio.com",
+    projectId: "gpsdata-2975c",
+    storageBucket: "gpsdata-2975c.appspot.com",
+    messagingSenderId: "16740674252",
+    appId: "1:16740674252:web:3af606b0cd18544e4fb069",
+    measurementId: "G-T1EVLE8VF8"
+  };
+
+  // Inisialisasi Firebase
+  firebase.initializeApp(firebaseConfig);
+  const database = firebase.database();
+
+  // Fungsi Logout
+  function logout() {
+    firebase.auth().signOut().then(() => {
+      // Redirect ke halaman login
+      window.location.href = 'login.html';
+    }).catch((error) => {
+      alert('Error saat logout: ' + error.message);
+    });
+  }
+
+  // Fungsi untuk menyimpan data stasiun ke Firebase
+function saveStation() {
+    const stationName = document.getElementById('stationName').value;
+
+    if (drawnGeofence) {
+        const geofenceCoordinates = drawnGeofence.getLatLngs()[0].map(latlng => ({
+            lat: latlng.lat,
+            lng: latlng.lng
+        }));
+
+        const stationData = {
+            name: stationName,
+            coordinates: geofenceCoordinates,
+        };
+
+        const newStationKey = database.ref().child('stations').push().key;
+        database.ref('stations/' + newStationKey).set(stationData)
+            .then(() => {
+                document.getElementById('stationName').value = ''; // Reset input field
+                drawnItems.clearLayers(); // Hapus geofence yang sudah disimpan
+                drawnGeofence = null;
+                window.location.reload(); // Refresh halaman
+            })
+            .catch(error => {
+                console.error("Error saving station: ", error);
+            });
+    } else {
+        alert("Silakan gambar area geofence terlebih dahulu!");
+    }
+}
+
+// Fungsi untuk menghapus stasiun dari Firebase
+function deleteStation(key) {
+    const modal = new bootstrap.Modal(document.getElementById('deleteStationModal'));
+    modal.show();
+    document.getElementById('deleteStationConfirmBtn').onclick = function() {
+        database.ref('stations/' + key).remove()
+            .then(() => {
+                window.location.reload(); // Refresh halaman
+            })
+            .catch(error => {
+                console.error('Error deleting station: ', error);
+            });
+    };
+}
+
+
+  // Inisialisasi peta menggunakan Leaflet.js dan OpenStreetMap
+  const map = L.map('map').setView([-7.637517, 111.500023], 5);  // Lokasi default PPI Madiun
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+  }).addTo(map);
+
+  // Inisialisasi Leaflet Draw
+  const drawnItems = new L.FeatureGroup();
+  map.addLayer(drawnItems);
+
+  const drawControl = new L.Control.Draw({
+    draw: {
+      polygon: true,
+      rectangle: true,
+      circle: false,
+      polyline: false,
+      marker: false,
+    },
+    edit: {
+      featureGroup: drawnItems,
+      remove: true,
+    }
+  });
+  map.addControl(drawControl);
+
+  let drawnGeofence = null;
+
+  // Event listener untuk menggambar geofence baru
+  map.on(L.Draw.Event.CREATED, function (event) {
+    if (drawnGeofence) {
+      drawnItems.removeLayer(drawnGeofence);
+    }
+    drawnGeofence = event.layer;
+    drawnItems.addLayer(drawnGeofence);
+  });
+
+  // Fungsi untuk memuat data stasiun dari Firebase dan menampilkannya di peta dan tabel
+  function loadStations() {
+    database.ref('stations').once('value', (snapshot) => {
+      const stations = snapshot.val();
+      drawnItems.clearLayers(); // Hapus semua geofence lama
+      const stationTableBody = document.getElementById('stationData');
+      stationTableBody.innerHTML = ''; // Kosongkan tabel sebelum menambahkan data baru
+
+      let index = 1;
+      for (let key in stations) {
+        const station = stations[key];
+        const latlngs = station.coordinates.map(coord => [coord.lat, coord.lng]);
+        
+        // Tambahkan area geofence ke peta
+        const polygon = L.polygon(latlngs, { color: 'blue' }).addTo(drawnItems);
+        polygon.bindPopup(`<b>Stasiun: </b>${station.name}`);
+
+        // Tambahkan data stasiun ke tabel
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${index++}</td>
+          <td>${station.name}</td>
+          <td>
+            <button class="btn btn-info btn-sm" onclick="focusOnStation('${key}')"><i class="fas fa-eye"></i> Lihat</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteStation('${key}')"><i class="fas fa-trash"></i> Hapus</button>
+          </td>
+        `;
+        stationTableBody.appendChild(row);
+      }
+    });
+  }
+
+  // Fungsi untuk memfokuskan peta ke area geofence
+  function focusOnStation(key) {
+    database.ref('stations/' + key).once('value', (snapshot) => {
+      const station = snapshot.val();
+      if (station) {
+        const latlngs = station.coordinates.map(coord => [coord.lat, coord.lng]);
+        map.fitBounds(latlngs);
+      }
+    });
+  }
+
+  // Memuat data stasiun saat halaman pertama kali dimuat
+  window.onload = function () {
+    firebase.auth().onAuthStateChanged(function(user) {
+      if (user) {
+        document.getElementById('username').textContent = user.displayName || 'User';
+      }
+    });
+    loadStations();
+  };
+</script>
+
+</body>
+</html>
